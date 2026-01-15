@@ -118,6 +118,18 @@ def iter_chunks(text: str, mode: str, window_size: int) -> list[str]:
     raise ValueError(f"Unknown chunk mode: {mode}")
 
 
+def limit_text_to_sentences(nlp, text: str, max_sentences: int) -> str:
+    if max_sentences <= 0:
+        return ""
+    sentences: list[str] = []
+    for doc in nlp.pipe(chunk_paragraphs(text), batch_size=10):
+        for sent in doc.sents:
+            sentences.append(sent.text)
+            if len(sentences) >= max_sentences:
+                return " ".join(sentences)
+    return " ".join(sentences)
+
+
 def store_text(text_id: int, text: str) -> Path:
     output_path = GUTENBERG_DIR / f"{text_id}.txt"
     output_path.write_text(text, encoding="utf-8")
@@ -223,6 +235,7 @@ def compute_features(nlp, text_id: int, chunks: list[str]) -> list[dict[str, obj
         row: dict[str, object] = {
             "text_id": text_id,
             "chunk_id": chunk_id,
+            "text": chunk,
             "token_count": token_count,
             "sentence_count": sentence_count,
             "dependency_depth_mean": depth_summary["mean"],
@@ -259,6 +272,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--chunk-mode", choices=["paragraphs", "window"], default="paragraphs")
     parser.add_argument("--window-size", type=int, default=200)
     parser.add_argument("--spacy-model", default="en_core_web_trf")
+    parser.add_argument("--max-sentences", type=int, default=0)
     return parser.parse_args()
 
 
@@ -274,6 +288,8 @@ def main() -> None:
 
     for gutenberg_text in iter_texts(args.ids):
         cleaned = normalize_text(strip_header_footer(gutenberg_text.raw_text))
+        if args.max_sentences:
+            cleaned = limit_text_to_sentences(nlp, cleaned, args.max_sentences)
         chunks = iter_chunks(cleaned, args.chunk_mode, args.window_size)
         text_path = store_text(gutenberg_text.text_id, cleaned)
         metadata_rows.append(

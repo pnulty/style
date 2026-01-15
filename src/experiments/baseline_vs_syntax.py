@@ -223,8 +223,8 @@ def prepare_features(
 
 def build_classifiers(random_state: int = 13):
     return {
-        "logistic_regression": LogisticRegression(max_iter=2000, n_jobs=-1),
-        "linear_svm": LinearSVC(),
+        "logistic_regression": LogisticRegression(max_iter=2000),
+        "linear_svm": LinearSVC(max_iter=5000),
         "random_forest": RandomForestClassifier(
             n_estimators=200, random_state=random_state
         ),

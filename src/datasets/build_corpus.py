@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Iterable, List
 
 from .detectrl import load_detectrl
+from .gutenberg_authors import DEFAULT_OUTPUT_PATH as DEFAULT_GUTENBERG_OUTPUT
 from .ghostbuster import load_ghostbuster
 from .schema import NormalizedExample
 
@@ -27,9 +28,34 @@ def build_corpus(
     else:
         print("Ghostbuster raw data not found; skipping.")
 
+    gutenberg_path = DEFAULT_GUTENBERG_OUTPUT
+    if gutenberg_path.exists():
+        datasets.extend(_load_gutenberg(gutenberg_path))
+    else:
+        print("Gutenberg author corpus not found; skipping.")
+
     output_path.parent.mkdir(parents=True, exist_ok=True)
     write_parquet(output_path, datasets)
     return datasets
+
+
+def _load_gutenberg(path: Path) -> List[NormalizedExample]:
+    try:
+        import pandas as pd
+    except Exception as exc:
+        raise RuntimeError("pandas is required to load Gutenberg corpus parquet.") from exc
+
+    df = pd.read_parquet(path)
+    return [
+        NormalizedExample(
+            text=row["text"],
+            label=row["label"],
+            source=row.get("source", "gutenberg"),
+            domain=row.get("domain", "prose"),
+            metadata=row.get("metadata", {}),
+        )
+        for _, row in df.iterrows()
+    ]
 
 
 def write_parquet(path: Path, rows: Iterable[NormalizedExample]) -> None:
