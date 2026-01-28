@@ -324,6 +324,11 @@ def main():
         type=Path,
         default=Path("data/processed/gutenberg_syntax_features.parquet"),
     )
+    parser.add_argument(
+        "--metadata",
+        type=Path,
+        default=Path("data/processed/gutenberg_metadata.csv"),
+    )
     parser.add_argument("--label", type=str, default=None)
     parser.add_argument("--test-size", type=float, default=0.2)
     parser.add_argument("--random-state", type=int, default=13)
@@ -388,8 +393,13 @@ def main():
 
     results_df = pd.DataFrame(results)
     plots = plot_results(results_df, args.figures)
+    metadata_rows = 0
+    if args.metadata.exists():
+        metadata_rows = len(pd.read_csv(args.metadata))
     metadata = {
         "data_path": str(args.data),
+        "metadata_path": str(args.metadata),
+        "metadata_rows": metadata_rows,
         "samples": len(df),
         "labels": label_columns,
         "syntax_features": len(syntax_cols),
